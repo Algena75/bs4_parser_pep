@@ -3,18 +3,21 @@ import logging
 
 from requests import RequestException
 
-from exceptions import ParserFindTagException
+from exceptions import ParserFindTagException, ResponseIsNoneException
 
 
-def get_response(session, url):
+def get_response(session, url, whats_new_list=None):
     """Перехватывает ошибку загрузки страницы при парсинге."""
+    message = f'Возникла ошибка при загрузке страницы {url}'
     try:
         response = session.get(url)
         response.encoding = 'utf-8'
+        if response is None and whats_new_list is None:
+            raise ResponseIsNoneException(message)
         return response
     except RequestException:
         logging.exception(
-            f'Возникла ошибка при загрузке страницы {url}',
+            message,
             stack_info=True
         )
 

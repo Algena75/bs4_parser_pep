@@ -9,26 +9,32 @@ from constants import BASE_DIR, DATETIME_FORMAT
 
 
 def control_output(results, cli_args):
+    output_options = {
+        'pretty': pretty_output,
+        'file': file_output
+    }
     output = cli_args.output
-    if output == 'pretty':
-        pretty_output(results)
-    elif output == 'file':
-        file_output(results, cli_args)
+    if output in output_options.keys():
+        output_options[output](results, cli_args)
     else:
         default_output(results)
 
 
 def default_output(results):
+    message = 'Таблица результатов'
     for row in results:
+        message = message + '\n' + ' '.join(map(str, row))
         print(*row)
+    logging.info(message)
 
 
-def pretty_output(results):
+def pretty_output(results, cli_args=None):
     table = PrettyTable()
     table.field_names = results[0]
     table.align = 'l'
     table.add_rows(results[1:])
-    print(table)
+    logging.info(f'Таблица результатов:\n{table}')
+    print(f'Таблица результатов:\n{table}')
 
 
 def file_output(results, cli_args):

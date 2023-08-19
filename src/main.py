@@ -17,8 +17,6 @@ def whats_new(session):
     """Возвращает список новостей Python."""
     whats_new_url = urljoin(MAIN_DOC_URL, 'whatsnew/')
     response = get_response(session, whats_new_url)
-    if response is None:
-        return
     soup = BeautifulSoup(response.text, features='lxml')
     main_div = find_tag(soup, 'section', attrs={'id': 'what-s-new-in-python'})
     div_with_ul = find_tag(main_div, 'div', attrs={'class': 'toctree-wrapper'})
@@ -31,7 +29,7 @@ def whats_new(session):
         version_a_tag = section.find('a')
         href = version_a_tag['href']
         version_link = urljoin(whats_new_url, href)
-        response = get_response(session, version_link)
+        response = get_response(session, version_link, 'section')
         if response is None:
             continue
         soup = BeautifulSoup(response.text, features='lxml')
@@ -45,26 +43,23 @@ def whats_new(session):
 def latest_versions(session):
     """Возвращает список версий Python."""
     response = get_response(session, MAIN_DOC_URL)
-    if response is None:
-        return
     soup = BeautifulSoup(response.text, 'lxml')
-    sidebar = find_tag(soup, 'div', class_='sphinxsidebarwrapper')
+    sidebar = find_tag(soup, 'div', {'class': 'sphinxsidebarwrapper'})
     ul_tags = sidebar.find_all('ul')
     for ul in ul_tags:
         if 'All versions' in ul.text:
             a_tags = ul.find_all('a')
             break
     else:
-        raise Exception('Ничего не нашлось')
+        raise LookupError('Ничего не нашлось')
     results = [('Ссылка на документацию', 'Версия', 'Статус')]
     pattern = r'Python (?P<version>\d\.\d+) \((?P<status>.*)\)'
     for a_tag in a_tags:
         link = a_tag['href']
         text_match = re.search(pattern, a_tag.text)
-        if text_match is not None:
-            version, status = text_match.groups()
-        else:
-            version, status = a_tag.text, ''
+        version, status = (
+            text_match.groups() if text_match else a_tag.text, ''
+        )
         results.append((link, version, status))
     return results
 
@@ -73,8 +68,6 @@ def download(session):
     """Скачивает последнюю версию документации Python в формате pdf."""
     downloads_url = urljoin(MAIN_DOC_URL, 'download.html')
     response = get_response(session, downloads_url)
-    if response is None:
-        return
     soup = BeautifulSoup(response.text, 'lxml')
     main_tag = find_tag(soup, 'div', {'role': 'main'})
     table_tag = find_tag(main_tag, 'table', {'class': 'docutils'})
@@ -100,36 +93,35 @@ def download(session):
 def pep(session):
     """Возвращает список PEP в формате Статус/Количество."""
     response = get_response(session, PEPS_URL)
-    if response is None:
-        return
     soup = BeautifulSoup(response.text, 'lxml')
     tr_tag = soup.find_all('tr')
     result = {}
     wrong_statuses = []
     for tr in tr_tag[:30]:
-        if 'abbr' in str(tr.contents):
-            abbr = find_tag(tr, 'abbr')
-            if len(abbr.text) == 2:
-                status_letter = abbr.text[1]
-                preview_status = EXPECTED_STATUS[status_letter]
-            else:
-                preview_status = EXPECTED_STATUS['']
-            a_tag = find_tag(tr, 'a')
-            href = a_tag['href']
-            pep_link = urljoin(PEPS_URL, href)
-            response = get_response(session, pep_link)
-            if response is None:
-                continue
-            soup = BeautifulSoup(response.text, 'lxml')
-            actual_status = soup.find(text='Status').find_next('dd').text
-            if actual_status not in preview_status:
-                wrong_statuses.append(
-                    (pep_link, actual_status, preview_status)
-                )
-            if actual_status in result.keys():
-                result[actual_status] += 1
-            else:
-                result[actual_status] = 1
+        if 'abbr' not in str(tr.contents):
+            continue
+        abbr = find_tag(tr, 'abbr')
+        if len(abbr.text) == 2:
+            status_letter = abbr.text[1]
+            preview_status = EXPECTED_STATUS[status_letter]
+        else:
+            preview_status = EXPECTED_STATUS['']
+        a_tag = find_tag(tr, 'a')
+        href = a_tag['href']
+        pep_link = urljoin(PEPS_URL, href)
+        response = get_response(session, pep_link)
+        if response is None:
+            continue
+        soup = BeautifulSoup(response.text, 'lxml')
+        actual_status = soup.find(text='Status').find_next('dd').text
+        if actual_status not in preview_status:
+            wrong_statuses.append(
+                (pep_link, actual_status, preview_status)
+            )
+        if actual_status in result.keys():
+            result[actual_status] += 1
+        else:
+            result[actual_status] = 1
     logging_wrong_statuses(wrong_statuses)
     table = [('Статус', 'Количество')]
     total = 0
