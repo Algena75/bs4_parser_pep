@@ -7,10 +7,10 @@
 Когорта 19+ и
 Алексей Наумов
 ## Используемые технолологии:
-agrparse
-библиотека bs4
-библиотека requests с надстройкой requests_cache
-прогресс-бар tqdm
+- agrparse
+- библиотека bs4
+- библиотека requests с надстройкой requests_cache
+- прогресс-бар tqdm
 ## Как запустить проект:
 Клонировать репозиторий и перейти в него в командной строке:
 ```
@@ -38,4 +38,6 @@ python3 -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 ## Документация по программе:
+```
 python3 main.py -h
+```
